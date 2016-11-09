@@ -43,12 +43,15 @@ class BaseDataLayer : public Layer<Dtype> {
   TransformationParameter transform_param_;
   shared_ptr<DataTransformer<Dtype> > data_transformer_;
   bool output_labels_;
+  bool box_label_;
 };
 
 template <typename Dtype>
 class Batch {
  public:
   Blob<Dtype> data_, label_;
+  // vector<Blob<Dtype> > multi_label_;
+  vector<shared_ptr<Blob<Dtype> > > multi_label_;
 };
 
 template <typename Dtype>
