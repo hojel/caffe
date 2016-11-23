@@ -670,15 +670,6 @@ layer {
     negative_slope: 0.1
   }
 }
-layer {
-  name: "drop7"
-  type: "Dropout"
-  bottom: "scale7"
-  top: "scale7"
-  dropout_param {
-    dropout_ratio: 0.5
-  }
-}
 
 layer {
   name: "conv8"
