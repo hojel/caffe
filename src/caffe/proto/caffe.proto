@@ -571,7 +571,9 @@ message DetectionLossParameter {
   optional float class_scale = 6 [default = 1.0];
   optional float coord_scale = 7 [default = 5.0];
   optional bool sqrt = 8 [default = true];
-  optional bool constriant = 9 [default = false];
+  optional bool constraint = 9 [default = false];
+  optional bool rescore = 10 [default = true];
+  optional uint32 num_coord = 11 [default = 4];
 }
 
 message EvalDetectionParameter {
@@ -586,9 +588,10 @@ message EvalDetectionParameter {
   optional uint32 num_object = 3 [default = 2];
   optional float threshold = 4 [default = 0.5];
   optional bool sqrt = 5 [default = true];
-  optional bool constriant = 6 [default = true];
+  optional bool constraint = 6 [default = false];
   optional ScoreType score_type = 7 [default = MULTIPLY];
   optional float nms = 8 [default = -1];
+  optional uint32 num_coord = 9 [default = 4];
 }
 
 message ConvolutionParameter {

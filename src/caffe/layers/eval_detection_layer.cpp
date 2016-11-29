@@ -72,14 +72,16 @@ void GetGTBox(int side, const Dtype* label_data, map<int, vector<BoxData> >* gt_
 }
 
 template <typename Dtype>
-void GetPredBox(int side, int num_object, int num_class, const Dtype* input_data,
-            map<int, vector<BoxData> >* pred_boxes, bool use_sqrt, bool constriant,
+void GetPredBox(int side, int num_object, int num_class, int num_coord, const Dtype* input_data,
+            map<int, vector<BoxData> >* pred_boxes, bool use_sqrt,
             int score_type, float nms_threshold) {
   vector<BoxData> tmp_boxes;
   int locations = pow(side, 2);
   for (int i = 0; i < locations; ++i) {
+    int row = i / side;
+    int col = i % side;
     int pred_label = 0;
-    float max_prob = input_data[i];
+    Dtype max_prob = input_data[i];
     for (int j = 1; j < num_class; ++j) {
       int class_index = j * locations + i;
       if (input_data[class_index] > max_prob) {
@@ -94,10 +96,10 @@ void GetPredBox(int side, int num_object, int num_class, const Dtype* input_data
     }
     // LOG(INFO) << "pred_label: " << pred_label << " max_prob: " << max_prob;
     int obj_index = num_class * locations + i;
-    int coord_index = (num_class + num_object) * locations + i;
+    int coord_index = (num_class + num_object) * locations + i * num_object * num_coord;
     for (int k = 0; k < num_object; ++k) {
       BoxData pred_box;
-      float scale = input_data[obj_index + k * locations];
+      Dtype scale = input_data[obj_index + k * locations];
       pred_box.label_ = pred_label;
       if (score_type == 0) {
         pred_box.score_ = scale;
@@ -106,16 +108,13 @@ void GetPredBox(int side, int num_object, int num_class, const Dtype* input_data
       } else {
         pred_box.score_ = scale * max_prob;
       }
-      int box_index = coord_index + k * 4 * locations;
-      if (!constriant) {
-        pred_box.box_.push_back(input_data[box_index + 0 * locations]);
-        pred_box.box_.push_back(input_data[box_index + 1 * locations]);
-      } else {
-        pred_box.box_.push_back((i % side + input_data[box_index + 0 * locations]) / side);
-        pred_box.box_.push_back((i / side + input_data[box_index + 1 * locations]) / side);
-      }
-      float w = input_data[box_index + 2 * locations];
-      float h = input_data[box_index + 3 * locations];
+      int box_index = coord_index + k * num_coord;
+      Dtype x = input_data[box_index + 0];
+      Dtype y = input_data[box_index + 1];
+      Dtype w = input_data[box_index + 2];
+      Dtype h = input_data[box_index + 3];
+      pred_box.box_.push_back((col + x) / side);
+      pred_box.box_.push_back((row + y) / side);
       if (use_sqrt) {
         pred_box.box_.push_back(pow(w, 2));
         pred_box.box_.push_back(pow(h, 2));
@@ -155,9 +154,9 @@ void EvalDetectionLayer<Dtype>::LayerSetUp(
   side_ = param.side();
   num_class_ = param.num_class();
   num_object_ = param.num_object();
+  num_coord_ = param.num_coord();
   threshold_ = param.threshold();
   sqrt_ = param.sqrt();
-  constriant_ = param.constriant();
   nms_ = param.nms();
   switch (param.score_type()) {
     case EvalDetectionParameter_ScoreType_OBJ:
@@ -180,15 +179,15 @@ void EvalDetectionLayer<Dtype>::Reshape(
   int input_count = bottom[0]->count(1);
   int label_count = bottom[1]->count(1);
   // outputs: classes, iou, coordinates
-  int tmp_input_count = side_ * side_ * (num_class_ + (1 + 4) * num_object_);
+  int tmp_input_count = side_ * side_ * (num_class_ + (1 + num_coord_) * num_object_);
   // label: isobj, class_label, coordinates
-  int tmp_label_count = side_ * side_ * (1 + 1 + 1 + 4);
+  int tmp_label_count = side_ * side_ * (1 + 1 + 1 + num_coord_);
   CHECK_EQ(input_count, tmp_input_count);
   CHECK_EQ(label_count, tmp_label_count);
 
   vector<int> top_shape(2, 1);
   top_shape[0] = bottom[0]->num();
-  top_shape[1] = num_class_ + side_ * side_ * num_object_ * 4;
+  top_shape[1] = num_class_ + side_ * side_ * num_object_ * num_coord_;
   top[0]->Reshape(top_shape);
 }
 
@@ -215,7 +214,7 @@ void EvalDetectionLayer<Dtype>::Forward_cpu(
       }
     }
     map<int, vector<BoxData> > pred_boxes;
-    GetPredBox(side_, num_object_, num_class_, input_data + input_index, &pred_boxes, sqrt_, constriant_, score_type_, nms_);
+    GetPredBox(side_, num_object_, num_class_, num_coord_, input_data + input_index, &pred_boxes, sqrt_, score_type_, nms_);
     int index = top_index + num_class_;
     int pred_count(0);
     for (std::map<int, vector<BoxData> >::iterator it = pred_boxes.begin(); it != pred_boxes.end(); ++it) {
@@ -236,10 +235,10 @@ void EvalDetectionLayer<Dtype>::Forward_cpu(
       for (int k = 0; k < p_boxes.size(); ++k) {
         top_data[index + pred_count * 4 + 0] = p_boxes[k].label_;
         top_data[index + pred_count * 4 + 1] = p_boxes[k].score_;
-        float max_iou(-1);
+        Dtype max_iou(-1);
         int idx(-1);
         for (int g = 0; g < g_boxes.size(); ++g) {
-          float iou = Calc_iou(p_boxes[k].box_, g_boxes[g].box_);
+          Dtype iou = Calc_iou(p_boxes[k].box_, g_boxes[g].box_);
           if (iou > max_iou) {
             max_iou = iou;
             idx = g;

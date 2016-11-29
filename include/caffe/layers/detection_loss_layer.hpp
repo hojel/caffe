@@ -44,12 +44,14 @@ class DetectionLossLayer : public LossLayer<Dtype> {
   int side_;
   int num_class_;
   int num_object_;
+  int num_coord_;
   float object_scale_;
   float class_scale_;
   float noobject_scale_;
   float coord_scale_;
   bool sqrt_;
-  bool constriant_;
+  bool rescore_;
+  bool constraint_;
 
   Blob<Dtype> diff_;
 };

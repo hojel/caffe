@@ -159,21 +159,23 @@ void BoxDataLayer<Dtype>::transform_label(int count, Dtype* top_label,
     float x = box_labels[i].box_[0];
     float y = box_labels[i].box_[1];
     // LOG(INFO) << "x: " << x << " y: " << y;
-    int x_index = floor(x * side);
-    int y_index = floor(y * side);
-    x_index = std::min(x_index, side - 1);
-    y_index = std::min(y_index, side - 1);
-    int dif_index = side * y_index + x_index;
-    int obj_index = locations + dif_index;
-    int class_index = locations * 2 + dif_index;
-    int cor_index = locations * 3 + dif_index * 4;
+    int col = floor(x * side);
+    int row = floor(y * side);
+    col = std::min(col, side - 1);
+    row = std::min(row, side - 1);
+    int index = row*side + col;
+    int dif_index = index;
+    int obj_index = locations + index;
+    int class_index = locations * 2 + index;
+    int cor_index = locations * 3 + index * 4;
     top_label[dif_index] = difficult;
     top_label[obj_index] = 1;
     // LOG(INFO) << "dif_index: " << dif_index << " class_label: " << class_label;
     top_label[class_index] = class_label;
-    for (int j = 0; j < 4; ++j) {
-      top_label[cor_index + j] = box_labels[i].box_[j];
-    }
+    top_label[cor_index + 0] = x * side - col;
+    top_label[cor_index + 1] = y * side - row;
+    top_label[cor_index + 2] = box_labels[i].box_[2];
+    top_label[cor_index + 3] = box_labels[i].box_[3];
   }
 }
 

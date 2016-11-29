@@ -35,9 +35,10 @@ class EvalDetectionLayer : public Layer<Dtype> {
   int side_;
   int num_class_;
   int num_object_;
+  int num_coord_;
   float threshold_;
   bool sqrt_;
-  bool constriant_;
+  bool constraint_;
   int score_type_;
   float nms_;
 };
